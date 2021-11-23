@@ -16,17 +16,17 @@ type LoadBalancer struct {
 	api.UnimplementedAuctionServer
 	startTime        goTime.Time
 	replicaEndpoints []string
-	index int
+	index            int
 }
 
 func main() {
 	serverAddrStr := flag.String("serverAddr", "", "Server to connect to")
-	servernames := strings.Split(*serverAddrStr,",")
-	
+	servernames := strings.Split(*serverAddrStr, ",")
+
 	// Get list of replicas
 	s := &LoadBalancer{
-		replicaEndpoints:           servernames,
-		index:                      0,
+		replicaEndpoints: servernames,
+		index:            0,
 	}
 	s.StartServer()
 }
@@ -62,7 +62,7 @@ func (l *LoadBalancer) Bid(ctx context.Context, request *api.BidRequest) (*api.B
 
 // server
 func (l *LoadBalancer) StartServer() {
-	lis, err := net.Listen("tcp", "5000")
+	lis, err := net.Listen("tcp", "127.0.0.1:5000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -91,7 +91,7 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 
 // Send Res message
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
-	
+
 	log.Printf("Send res to: %s\n", endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
@@ -117,7 +117,7 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 
 // Send Res message
 func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) {
-	
+
 	log.Printf("Send res to: %s\n", endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
@@ -143,7 +143,7 @@ func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) 
 
 func (l *LoadBalancer) GetResult(context.Context, *api.ResultRequest) (*api.ResultReply, error) {
 	index := l.index
-	if l.index % 3 == 0 {
+	if l.index%3 == 0 {
 		l.index = 0
 	} else {
 		l.index += 1

@@ -37,13 +37,23 @@ services:
 
 
   client-1:
+    depends_on:
+      - loadbalancer
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.6
     build:
       context: .
       dockerfile: Dockerfile.client
     environment:
-      SERVERADDR: "loadbalancer:5000" 
+      SERVERADDR: "172.16.238.2:5000" 
 
   client-2:
+    depends_on:
+      - loadbalancer
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.7
     build:
       context: .
       dockerfile: Dockerfile.client
@@ -51,6 +61,11 @@ services:
       SERVERADDR: "loadbalancer:5000" 
 
   client-3:
+    depends_on:
+      - loadbalancer
+    networks:
+      app_net:
+        ipv4_address: 172.16.238.8
     build:
       context: .
       dockerfile: Dockerfile.client
