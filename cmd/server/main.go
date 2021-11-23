@@ -1,9 +1,11 @@
 package server
 
-import(
-	pb "github.com/ap/DMP3/api"	
+import (
+	"context"
 	"log"
 	"net"
+
+	pb "github.com/ap/DMP3/api"
 	"google.golang.org/grpc"
 )
 
@@ -37,18 +39,28 @@ func(n *Node) StartServer(){
 	}
 }
 
-func(n *Node) UpdateBid(newBid int32) pb.BidReply_Outcome{
+func(n *Node) UpdateBid(_ context.Context, req *pb.BidRequest) (*pb.BidReply, error){
+	newBid := req.GetBid()
+	
 	if(n.HighestBid<newBid){
 		n.HighestBid = newBid
 		
-		return pb.BidReply_SUCCESS
+		return &pb.BidReply{
+			Outcome: pb.BidReply_SUCCESS,
+		},nil
 	} else if(n.HighestBid>=newBid){
-		return pb.BidReply_FAIL
+		return &pb.BidReply{
+			Outcome: pb.BidReply_FAIL,
+		},nil
 	}
 
-	return pb.BidReply_EXCEPTION
+	return &pb.BidReply{
+		Outcome: pb.BidReply_EXCEPTION,
+	},nil
 }
 
-func(n *Node) getResult() int32{
-	return n.HighestBid
+func(n *Node) getResult(context.Context, *pb.ResultRequest) (*pb.ResultReply, error){
+	return &pb.ResultReply{
+		Result: n.HighestBid,
+	},nil
 }
