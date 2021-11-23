@@ -19,7 +19,6 @@ type LoadBalancer struct {
 	index int
 }
 
-// main func
 func main() {
 	serverAddrStr := flag.String("serverAddr", "", "Server to connect to")
 	servernames := strings.Split(*serverAddrStr,",")
@@ -36,7 +35,6 @@ func (l *LoadBalancer) Bid(ctx context.Context, request *api.BidRequest) (*api.B
 
 	if l.isAuctionLive() {
 
-		// TODO: Handle if all replicas are down...
 		for index, v := range l.replicaEndpoints {
 			if len(v) > 0 {
 				response, err := l.SendBid(v, request)
@@ -93,12 +91,10 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 
 // Send Res message
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
-	// TODO: add IP
+	
+	log.Printf("Send res to: %s\n", endpoint)
 
-	url := strings.Split("", ":")[0] + "5000"
-	log.Printf("Send res to: %s\n", url)
-
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -121,12 +117,10 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 
 // Send Res message
 func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) {
-	// TODO: add IP
+	
+	log.Printf("Send res to: %s\n", endpoint)
 
-	url := strings.Split("", ":")[0] + "5000"
-	log.Printf("Send res to: %s\n", url)
-
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -157,23 +151,3 @@ func (l *LoadBalancer) GetResult(context.Context, *api.ResultRequest) (*api.Resu
 
 	return l.SendGetResult(l.replicaEndpoints[index])
 }
-
-// Handle incoming Req message
-// func (n *Node) Req(ctx context.Context, in *pb.RequestMessage) (*pb.Empty, error) {
-// 	callerIp := getClientIpAddress(ctx)
-
-// 	log.Printf("Handling request from %s, current status: %d, local time: %d, in time: %d\n", callerIp, n.status, n.GetTs(), in.GetTime())
-
-// 	status := n.GetStatus()
-// 	if status == Status_HELD || (status == Status_WANTED && n.GetTs() < in.GetTime()) {
-// 		log.Printf("Enque %s\n", callerIp)
-// 		n.queue.Enqueue(callerIp)
-// 		n.queue.Print()
-// 	} else {
-// 		n.SendRes(callerIp)
-// 	}
-
-// 	n.timestamp.Sync(in.GetTime())
-
-// 	return &pb.Empty{}, nil
-// }
