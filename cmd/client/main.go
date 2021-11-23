@@ -34,7 +34,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if !*random {
+	if *random {
 		autoAuction(c, ctx)
 	} else {
 		auction(c, ctx)
@@ -46,13 +46,13 @@ func autoAuction(c pb.AuctionClient, ctx context.Context) {
 
 	for {
 		result, err := result(c, ctx)
-		if err == nil {
+		if err != nil {
 			break
 		}
 
 		result += r.Int31n(10)
 		err = bid(result, c, ctx)
-		if err == nil {
+		if err != nil {
 			break
 		}
 	}
