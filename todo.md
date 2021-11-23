@@ -1,0 +1,5 @@
+- [ ] Server
+- [ ] Client
+- [ ] Load balancer
+- [ ] Docker
+    - [ ] Docker compose

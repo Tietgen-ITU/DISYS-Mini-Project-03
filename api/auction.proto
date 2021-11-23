@@ -1,0 +1,29 @@
+syntax = "proto3";
+option go_package = "github.com/ap/DMP3/api";
+
+service Auction{
+    rpc Bid(BidRequest) returns (BidReply){}
+    rpc GetResult(ResultRequest) returns (ResultReply){}
+}
+
+message BidRequest{
+    int32 bid = 1;
+}
+
+message BidReply{
+    enum Outcome {
+        SUCCESS = 0;
+        FAIL = 1;
+        EXCEPTION = 2;
+    }
+ 
+    Outcome outcome = 1;
+}
+
+message ResultRequest{
+
+}
+
+message ResultReply{
+    int32 result = 1;    
+}
