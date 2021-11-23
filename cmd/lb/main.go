@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
 	"strings"
@@ -20,9 +21,14 @@ type LoadBalancer struct {
 
 // main func
 func main() {
-
+	serverAddrStr := flag.String("serverAddr", "", "Server to connect to")
+	servernames := strings.Split(*serverAddrStr,",")
+	
 	// Get list of replicas
-	s := &LoadBalancer{}
+	s := &LoadBalancer{
+		replicaEndpoints:           servernames,
+		index:                      0,
+	}
 	s.StartServer()
 }
 
