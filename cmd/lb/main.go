@@ -20,8 +20,13 @@ type LoadBalancer struct {
 }
 
 func main() {
-	serverAddrStr := flag.String("serverAddr", "", "Server to connect to")
+	serverAddrStr := flag.String("serverAddr", "abe123", "Server to connect to")
+	flag.Parse()
+
+	log.Printf("Input from flag: %s\n", *serverAddrStr)
+
 	servernames := strings.Split(*serverAddrStr, ",")
+	log.Printf("Replicas to forward reqeusts to: %v\n", servernames)
 
 	// Get list of replicas
 	s := &LoadBalancer{
@@ -62,7 +67,8 @@ func (l *LoadBalancer) Bid(ctx context.Context, request *api.BidRequest) (*api.B
 
 // server
 func (l *LoadBalancer) StartServer() {
-	lis, err := net.Listen("tcp", "127.0.0.1:5000")
+
+	lis, err := net.Listen("tcp", ":5000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -92,7 +98,7 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 // Send Res message
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
 
-	log.Printf("Send res to: %s\n", endpoint)
+	log.Printf("Send bid to: %s\n", endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -108,7 +114,7 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 
 	response, err := client.Bid(ctx, request)
 	if err != nil {
-		log.Printf("Res errored: %v\n", err)
+		log.Printf("Bid errored: %v\n", err)
 		return nil, err
 	}
 
@@ -118,7 +124,7 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 // Send Res message
 func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) {
 
-	log.Printf("Send res to: %s\n", endpoint)
+	log.Printf("Send GetResult to: %s\n", endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -134,7 +140,7 @@ func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) 
 
 	response, err := client.GetResult(ctx, &api.ResultRequest{})
 	if err != nil {
-		log.Printf("Res errored: %v\n", err)
+		log.Printf("GetResult errored: %v\n", err)
 		return nil, err
 	}
 
