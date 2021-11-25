@@ -98,7 +98,14 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 // Send Res message
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
 
-	log.Printf("Send bid to: %s\n", endpoint)
+	if !l.isAuctionLive() {
+		log.Printf("Auction is finished! Denying Bid Request...")
+		return &api.BidReply{
+			Outcome: api.BidReply_FAIL,
+		}, nil
+	}
+
+	log.Printf("Send bid %v to: %s\n", request.Bid, endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
