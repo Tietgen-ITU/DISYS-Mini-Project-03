@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -68,6 +69,7 @@ func (l *LoadBalancer) Bid(ctx context.Context, request *api.BidRequest) (*api.B
 // server
 func (l *LoadBalancer) StartServer() {
 
+	l.startAuction()
 	lis, err := net.Listen("tcp", ":5000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -78,17 +80,16 @@ func (l *LoadBalancer) StartServer() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-
-	l.startAuction()
 }
 
 func (l *LoadBalancer) startAuction() {
 	l.startTime = goTime.Now()
+	log.Printf("Starting auction at: %s\n", l.startTime)
 }
 
 func (l *LoadBalancer) isAuctionLive() bool {
 	elapsed := goTime.Since(l.startTime)
-	return elapsed.Minutes() >= 1
+	return elapsed.Minutes() < 1
 }
 
 func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
@@ -99,7 +100,8 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
 
 	if !l.isAuctionLive() {
-		log.Printf("Auction is finished! Denying Bid Request...")
+		fmt.Println("Auction is finished! Denying bid request from %s", endpoint)
+
 		return &api.BidReply{
 			Outcome: api.BidReply_FAIL,
 		}, nil
