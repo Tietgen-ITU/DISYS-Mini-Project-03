@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net"
+	"sync"
 
 	pb "github.com/ap/DMP3/api"
 	"github.com/ap/DMP3/internal/logging"
@@ -15,6 +16,7 @@ const (
 
 type Node struct {
 	HighestBid int32
+	lock       sync.RWMutex
 	pb.UnimplementedAuctionServer
 }
 
@@ -25,6 +27,7 @@ var (
 func main() {
 	node := &Node{
 		HighestBid: 0,
+		lock:       sync.RWMutex{},
 	}
 
 	node.StartServer()
@@ -48,6 +51,9 @@ func (n *Node) StartServer() {
 }
 
 func (n *Node) Bid(_ context.Context, req *pb.BidRequest) (*pb.BidReply, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	
 	logger.IPrintf("Retrieved bid request: %v, highest bid at this moment: %d\n", req, n.HighestBid)
 	newBid := req.GetBid()
 
@@ -72,6 +78,10 @@ func (n *Node) Bid(_ context.Context, req *pb.BidRequest) (*pb.BidReply, error) 
 }
 
 func (n *Node) GetResult(_ context.Context, _ *pb.ResultRequest) (*pb.ResultReply, error) {
+
+	n.lock.RLock()
+	defer n.lock.RUnlock()
+
 	logger.IPrintf("Retrieved get request. Highest bid at this moment: %d\n", n.HighestBid)
 	return &pb.ResultReply{
 		Result: n.HighestBid,
