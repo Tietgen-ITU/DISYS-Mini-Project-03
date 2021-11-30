@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -16,17 +17,22 @@ type LoadBalancer struct {
 	api.UnimplementedAuctionServer
 	startTime        goTime.Time
 	replicaEndpoints []string
-	index int
+	index            int
 }
 
 func main() {
-	serverAddrStr := flag.String("serverAddr", "", "Server to connect to")
-	servernames := strings.Split(*serverAddrStr,",")
-	
+	serverAddrStr := flag.String("serverAddr", "abe123", "Server to connect to")
+	flag.Parse()
+
+	log.Printf("Input from flag: %s\n", *serverAddrStr)
+
+	servernames := strings.Split(*serverAddrStr, ",")
+	log.Printf("Replicas to forward reqeusts to: %v\n", servernames)
+
 	// Get list of replicas
 	s := &LoadBalancer{
-		replicaEndpoints:           servernames,
-		index:                      0,
+		replicaEndpoints: servernames,
+		index:            0,
 	}
 	s.StartServer()
 }
@@ -62,7 +68,9 @@ func (l *LoadBalancer) Bid(ctx context.Context, request *api.BidRequest) (*api.B
 
 // server
 func (l *LoadBalancer) StartServer() {
-	lis, err := net.Listen("tcp", "5000")
+
+	l.startAuction()
+	lis, err := net.Listen("tcp", ":5000")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -72,17 +80,16 @@ func (l *LoadBalancer) StartServer() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-
-	l.startAuction()
 }
 
 func (l *LoadBalancer) startAuction() {
 	l.startTime = goTime.Now()
+	log.Printf("Starting auction at: %s\n", l.startTime)
 }
 
 func (l *LoadBalancer) isAuctionLive() bool {
 	elapsed := goTime.Since(l.startTime)
-	return elapsed.Minutes() >= 1
+	return elapsed.Minutes() < 1
 }
 
 func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
@@ -91,8 +98,16 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 
 // Send Res message
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
-	
-	log.Printf("Send res to: %s\n", endpoint)
+
+	if !l.isAuctionLive() {
+		fmt.Println("Auction is finished! Denying bid request from %s", endpoint)
+
+		return &api.BidReply{
+			Outcome: api.BidReply_FAIL,
+		}, nil
+	}
+
+	log.Printf("Send bid %v to: %s\n", request.Bid, endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -108,7 +123,7 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 
 	response, err := client.Bid(ctx, request)
 	if err != nil {
-		log.Printf("Res errored: %v\n", err)
+		log.Printf("Bid errored: %v\n", err)
 		return nil, err
 	}
 
@@ -117,8 +132,8 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 
 // Send Res message
 func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) {
-	
-	log.Printf("Send res to: %s\n", endpoint)
+
+	log.Printf("Send GetResult to: %s\n", endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -134,7 +149,7 @@ func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) 
 
 	response, err := client.GetResult(ctx, &api.ResultRequest{})
 	if err != nil {
-		log.Printf("Res errored: %v\n", err)
+		log.Printf("GetResult errored: %v\n", err)
 		return nil, err
 	}
 
@@ -143,7 +158,7 @@ func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) 
 
 func (l *LoadBalancer) GetResult(context.Context, *api.ResultRequest) (*api.ResultReply, error) {
 	index := l.index
-	if l.index % 3 == 0 {
+	if l.index%3 == 0 {
 		l.index = 0
 	} else {
 		l.index += 1
