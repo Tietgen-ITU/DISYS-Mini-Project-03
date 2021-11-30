@@ -25,9 +25,13 @@ type LoadBalancer struct {
 	roundRobinMutex  sync.Mutex
 }
 
+
 func main() {
-	serverAddrStr := flag.String("serverAddr", "", "Server to connect to")
+	serverAddrStr := flag.String("serverAddr", "abe123", "Server to connect to")
+	flag.Parse()
+
 	servernames := strings.Split(*serverAddrStr, ",")
+	logger.IPrintf("Replicas to forward reqeusts to: %v\n", servernames)
 
 	// Get list of replicas
 	s := &LoadBalancer{
@@ -69,7 +73,9 @@ func (l *LoadBalancer) Bid(ctx context.Context, request *api.BidRequest) (*api.B
 
 // server
 func (l *LoadBalancer) StartServer() {
-	lis, err := net.Listen("tcp", "5000")
+
+	l.startAuction()
+	lis, err := net.Listen("tcp", ":5000")
 	if err != nil {
 		logger.EPrintf("failed to listen: %v", err)
 	}
@@ -79,17 +85,16 @@ func (l *LoadBalancer) StartServer() {
 	if err := s.Serve(lis); err != nil {
 		logger.EPrintf("failed to serve: %v", err)
 	}
-
-	l.startAuction()
 }
 
 func (l *LoadBalancer) startAuction() {
 	l.startTime = goTime.Now()
+	logger.IPrintf("Starting auction at: %s\n", l.startTime)
 }
 
 func (l *LoadBalancer) isAuctionLive() bool {
 	elapsed := goTime.Since(l.startTime)
-	return elapsed.Minutes() >= 1
+	return elapsed.Minutes() < 1
 }
 
 func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
@@ -99,7 +104,15 @@ func (l *LoadBalancer) declareReplicaDead(replicaEnpointIndex int) {
 // Send Res message
 func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.BidReply, error) {
 
-	logger.IPrintf("Send res to: %s\n", endpoint)
+	if !l.isAuctionLive() {
+		logger.IPrintf("Auction is finished! Denying bid request from %s", endpoint)
+
+		return &api.BidReply{
+			Outcome: api.BidReply_FAIL,
+		}, nil
+	}
+
+	logger.IPrintf("Send bid %v to: %s\n", request.Bid, endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -115,7 +128,7 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 
 	response, err := client.Bid(ctx, request)
 	if err != nil {
-		logger.EPrintf("Res errored: %v\n", err)
+		logger.EPrintf("Bid errored: %v\n", err)
 		return nil, err
 	}
 
@@ -125,7 +138,7 @@ func (l *LoadBalancer) SendBid(endpoint string, request *api.BidRequest) (*api.B
 // Send Res message
 func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) {
 
-	logger.IPrintf("Send res to: %s\n", endpoint)
+	logger.IPrintf("Send GetResult to: %s\n", endpoint)
 
 	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -141,7 +154,7 @@ func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) 
 
 	response, err := client.GetResult(ctx, &api.ResultRequest{})
 	if err != nil {
-		logger.EPrintf("Res errored: %v\n", err)
+		logger.EPrintf("GetResult errored: %v\n", err)
 		return nil, err
 	}
 

@@ -55,6 +55,7 @@ func autoAuction(c pb.AuctionClient, ctx context.Context) {
 		if err != nil {
 			break
 		}
+		time.Sleep(time.Duration(r.Intn(10)) * time.Second)
 	}
 }
 
