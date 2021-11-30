@@ -5,6 +5,7 @@ import (
 	"flag"
 	"net"
 	"strings"
+	"sync"
 	goTime "time"
 
 	"github.com/ap/DMP3/api"
@@ -21,6 +22,7 @@ type LoadBalancer struct {
 	startTime        goTime.Time
 	replicaEndpoints []string
 	index            int
+	roundRobinMutex  sync.Mutex
 }
 
 func main() {
@@ -31,6 +33,7 @@ func main() {
 	s := &LoadBalancer{
 		replicaEndpoints: servernames,
 		index:            0,
+		roundRobinMutex: sync.Mutex{},
 	}
 	s.StartServer()
 }
@@ -145,7 +148,14 @@ func (l *LoadBalancer) SendGetResult(endpoint string) (*api.ResultReply, error) 
 	return response, nil
 }
 
+/*
+Gets the result by using a round robin
+*/
 func (l *LoadBalancer) GetResult(context.Context, *api.ResultRequest) (*api.ResultReply, error) {
+
+	l.roundRobinMutex.Lock()
+	defer l.roundRobinMutex.Unlock()
+
 	index := l.index
 	if l.index%3 == 0 {
 		l.index = 0
