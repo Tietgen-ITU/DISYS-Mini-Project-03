@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 
 	pb "github.com/ap/DMP3/api"
@@ -44,7 +43,7 @@ func (n *Node) StartServer() {
 
 	logger.IPrintf("Server listening on %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		logger.EPrintf("Failed to serve: %v", err)
 	}
 }
 
